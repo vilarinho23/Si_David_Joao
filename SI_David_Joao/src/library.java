@@ -1,4 +1,5 @@
 import java.io.*;
+import java.net.NetworkInterface;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.util.*;
@@ -19,12 +20,25 @@ public class library {
 
     public static void startRegistration(String nomeAPP, String versaoAPP) {
         System.out.println("Pedido de Registo de Licença!\n");
-        System.out.print("Nome: ");
-        String nome = scanner.nextLine();
-        System.out.print("Email: ");
-        String email = scanner.nextLine();
-        System.out.print("Número de identificação civil: ");
-        String numeroCivil = scanner.nextLine();
+
+        String nome;
+        String email;
+        String numeroCivil;
+        do {
+            System.out.print("Nome: ");
+            nome = scanner.nextLine();
+        } while (!nome.matches("[a-zA-Z]+"));
+
+        do {
+            System.out.print("Email: ");
+            email = scanner.nextLine();
+        }while(!email.matches("^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$"));
+
+        do {
+            System.out.print("Número de identificação civil: ");
+            numeroCivil = scanner.nextLine();
+        }while (!numeroCivil.matches("\\d{8}"));
+
         System.out.println("A ler cartão...");
 
         try {
@@ -38,7 +52,7 @@ public class library {
             Certificate userCertificate = cardReader.readCertificate();
             userInfo.put("Certificate", Base64.getEncoder().encodeToString(userCertificate.getEncoded()));
 
-            String systemInfo = "";
+            String systemInfo = getSystemIdentifier();
             userInfo.put("Informação do Sistema", systemInfo);
 
             userInfo.put("Nome da Aplicação", nomeAPP);
@@ -61,6 +75,41 @@ public class library {
 
         } catch (Exception e) {
             System.out.println("Ocorreu um erro durante o registo: " + e.getMessage());
+        }
+    }
+
+    public static String getSystemIdentifier() {
+        try {
+            //CPU INFO
+            int numProcessors = Runtime.getRuntime().availableProcessors();
+            String cpuArch = System.getProperty("os.arch");
+
+            //MAC INFO
+            StringBuilder macAddresses = new StringBuilder();
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = networkInterfaces.nextElement();
+                byte[] mac = networkInterface.getHardwareAddress();
+                if (mac != null) {
+                    macAddresses.append(Arrays.toString(mac));
+                }
+            }
+
+            //Motherboard INFO
+            Process process = new ProcessBuilder().command("cmd", "/c", "wmic baseboard get serialnumber").start();
+            List<String> outputLines = new BufferedReader(new InputStreamReader(process.getInputStream())).lines().toList();
+            String mbSerial = outputLines.get(2).trim();
+
+            //Storage INFO
+            process = new ProcessBuilder().command("cmd", "/c", "wmic diskdrive get model").start();
+            outputLines = new BufferedReader(new InputStreamReader(process.getInputStream())).lines().toList();
+            String StorageSerial = outputLines.get(4).trim();
+
+            //Combinar INFO
+            return numProcessors + "/" + cpuArch + "/" + mbSerial + "/" + StorageSerial + "/" + macAddresses;
+        } catch (IOException e) {
+            System.out.println("Ocorreu um erro ao obter informação do sistema: " + e.getMessage());
+            return null;
         }
     }
 
