@@ -93,13 +93,16 @@ public class library {
             PrivateKey privateKey = cardReader.getPrivateKey();
             signFile(encryptedFile, privateKey, cardReader.prov);
 
+
+
             // Salvar a chave pública do utilizador num ficheiro
             savePublicKeyToFile(cardReader.getPublicKey());
 
             // Criar um arquivo zip com os ficheiros criados
-            try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream("pedido_registro.zip"))) {
+            try (ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream("pedido_registo.zip"))) {
                 addFileToZip(encryptedFile, zipOut, "pedido_registo.json");
                 addFileToZip("pk_user.pem", zipOut, "pk_user.pem");
+                addFileToZip("signature.pem", zipOut, "signature.pem");
             } catch (IOException e) {
                 System.out.println("Erro ao adicionar ficheiro ao zip: " + e.getMessage());
             }
@@ -235,6 +238,17 @@ public class library {
             while ((bytesRead = fis.read(buffer)) != -1) {
                 signature.update(buffer, 0, bytesRead);
             }
+
+            byte[] signatureBytes = signature.sign();
+            String signatureFilePath = "signature.pem";
+            try (FileOutputStream fos = new FileOutputStream(signatureFilePath)) {
+                fos.write(signatureBytes);
+                System.out.println("Signature saved successfully to: " + signatureFilePath);
+            } catch (IOException e) {
+                System.out.println("Error writing signature to the file: " + e.getMessage());
+            }
+
+
             System.out.println("Sucesso ao assinar: " + filePath);
         } catch (Exception e) {
             System.out.println("Erro ao assinar o ficheiro: " + e.getMessage());
@@ -327,3 +341,4 @@ public class library {
         }
     }
 }
+
